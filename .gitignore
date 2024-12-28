@@ -80,7 +80,7 @@ phpunit.xml
 *.jar
 *.rar
 *.tar
-*.zip
+# *.zip
 
 # Database
 *.sqlite
