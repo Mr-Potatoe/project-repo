@@ -17,6 +17,10 @@ import {
   Grid,
   Card,
   CardContent,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -25,6 +29,7 @@ import {
   Storage as DatabaseIcon,
   CalendarToday as CalendarIcon,
   Description as DescriptionIcon,
+  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import { formatDistanceToNow } from 'date-fns';
@@ -43,15 +48,17 @@ interface Project {
 interface ProjectDetailsProps {
   project: Project;
   onUpdate: (updatedProject: Project) => void;
+  onDelete?: () => void;
 }
 
-export default function ProjectDetails({ project, onUpdate }: ProjectDetailsProps) {
+export default function ProjectDetails({ project, onUpdate, onDelete }: ProjectDetailsProps) {
   const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [editedProject, setEditedProject] = useState(project);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     if (!isLoading) {
@@ -110,6 +117,29 @@ export default function ProjectDetails({ project, onUpdate }: ProjectDetailsProp
     }
   };
 
+  const handleDelete = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`/api/projects/${project.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || 'Failed to delete project');
+      }
+
+      toast.success('Project deleted successfully');
+      onDelete?.();
+    } catch (error) {
+      toast.error('Failed to delete project');
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+      setDeleteDialogOpen(false);
+    }
+  };
+
   return (
     <Box sx={{ width: '100%' }}>
       <Paper sx={{ p: 3, mb: 2, borderRadius: 2 }}>
@@ -149,28 +179,23 @@ export default function ProjectDetails({ project, onUpdate }: ProjectDetailsProp
                 </Tooltip>
               </Box>
             ) : (
-              <Tooltip title="Edit Project">
-                <IconButton onClick={handleEdit} color="primary" size="small">
-                  <EditIcon />
-                </IconButton>
-              </Tooltip>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Tooltip title="Delete Project">
+                  <IconButton onClick={() => setDeleteDialogOpen(true)} color="error" size="small">
+                    <DeleteIcon />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Edit Project">
+                  <IconButton onClick={handleEdit} color="primary" size="small">
+                    <EditIcon />
+                  </IconButton>
+                </Tooltip>
+              </Box>
             )}
           </Box>
         </Box>
 
-        <Tabs 
-          value={activeTab} 
-          onChange={handleTabChange}
-          sx={{ 
-            borderBottom: 1, 
-            borderColor: 'divider',
-            mb: 3,
-            '& .MuiTab-root': {
-              minHeight: '48px',
-              textTransform: 'none',
-            }
-          }}
-        >
+        <Tabs value={activeTab} onChange={handleTabChange} sx={{ borderBottom: 1, borderColor: 'divider', mb: 3, '& .MuiTab-root': { minHeight: '48px', textTransform: 'none' } }}>
           <Tab label="Details" disabled={isLoading} />
           <Tab label="Files" disabled={isLoading} />
         </Tabs>
@@ -189,12 +214,7 @@ export default function ProjectDetails({ project, onUpdate }: ProjectDetailsProp
                   {isEditing ? (
                     <TextField
                       value={editedProject.description}
-                      onChange={(e) =>
-                        setEditedProject({
-                          ...editedProject,
-                          description: e.target.value,
-                        })
-                      }
+                      onChange={(e) => setEditedProject({ ...editedProject, description: e.target.value })}
                       multiline
                       rows={3}
                       fullWidth
@@ -223,12 +243,7 @@ export default function ProjectDetails({ project, onUpdate }: ProjectDetailsProp
                   {isEditing ? (
                     <TextField
                       value={editedProject.database_name}
-                      onChange={(e) =>
-                        setEditedProject({
-                          ...editedProject,
-                          database_name: e.target.value,
-                        })
-                      }
+                      onChange={(e) => setEditedProject({ ...editedProject, database_name: e.target.value })}
                       error={!!errors.database_name}
                       helperText={errors.database_name || 'Must start with a letter, can contain letters, numbers, and underscores'}
                       size="small"
@@ -269,6 +284,24 @@ export default function ProjectDetails({ project, onUpdate }: ProjectDetailsProp
           <FileManager projectId={project.id} projectPath={project.upload_path} />
         )}
       </Paper>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Delete Project</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete project "{project.name}"? This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} disabled={isLoading}>
+            Cancel
+          </Button>
+          <Button onClick={handleDelete} color="error" disabled={isLoading} startIcon={isLoading ? <CircularProgress size={20} /> : <DeleteIcon />}>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

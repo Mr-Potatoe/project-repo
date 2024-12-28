@@ -350,6 +350,10 @@ export default function Dashboard() {
             <ProjectDetails
               project={selectedProject}
               onUpdate={handleProjectUpdate}
+              onDelete={() => {
+                setSelectedProject(null);
+                fetchProjects();
+              }}
             />
           )}
         </DialogContent>

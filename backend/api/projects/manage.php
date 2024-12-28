@@ -371,13 +371,13 @@ switch ($method) {
             $project = $check->fetch(PDO::FETCH_ASSOC);
             
             // Try to drop the project's database if it exists
-            // Database name is derived from project URL
-            $dbName = 'project_' . str_replace('-', '_', $project['url']);
             try {
-                $db->exec("DROP DATABASE IF EXISTS `" . $dbName . "`");
-                error_log("Dropped database: " . $dbName);
+                $rootDb = new PDO("mysql:host=localhost", "root", "");
+                $rootDb->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                $rootDb->exec("DROP DATABASE IF EXISTS `{$project['database_name']}`");
+                error_log("Dropped database: " . $project['database_name']);
             } catch (PDOException $e) {
-                error_log("Error dropping database {$dbName}: " . $e->getMessage());
+                error_log("Error dropping database {$project['database_name']}: " . $e->getMessage());
                 // Continue with deletion even if database drop fails
             }
             
